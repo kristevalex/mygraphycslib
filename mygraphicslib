@@ -1,0 +1,238 @@
+/* README
+
+
+*/
+
+
+#ifndef __MY_GRAPHICS_LIB_INCLUDED__ //{
+
+    //{ INCLUDES
+
+#include <windows.h>
+#include <wincon.h>
+#include <process.h>
+#include <stdio.h>
+#include <iostream>
+using namespace std;
+
+    //}
+
+    //{ VERSION
+
+#ifndef (WINVER) //{
+    #define   WINVER                   0x0500   // Defaults to Windows 2000
+#endif           //}
+
+
+#ifndef (__MY_GRAPHICS_LIB_VERSION__)
+    #define __MY_GRAPHICS_LIB_VERSION__ "1.0"
+#endif
+    //}
+
+    //{ MAIN CODE
+
+    //{ GLOBAL CROPE
+
+volatile bool WinCreated = false;
+
+volatile bool WinBlocked =  true;
+
+HDC hdc_buf_2 = NULL;
+
+char szClassName[ ] = "WindowsApp";
+
+
+    //}
+
+    //{ CLASSES
+
+struct _my_win_struct_
+    {
+    HWND hwnd;
+    size_t sizeX, sizeY;
+    char* NAME;
+    int nFunsterStil;
+    HINSTANCE hThisInstance;
+
+    _my_win_struct_   (          ) :
+        hwnd          (NULL      ),
+        sizeX         (800       ),
+        sizeY         (600       ),
+        NAME          ("Untitled"),
+        nFunsterStil  (1         ),
+        hThisInstance (NULL      )
+        {
+        }
+
+    };
+
+    //}
+
+    //{ FUNCTIONS
+
+    //{ PROTOTIPES
+
+LRESULT CALLBACK WindowProcedure (HWND, UINT, WPARAM, LPARAM);
+
+void _fred_massage (void* winstr_param);
+
+inline void __Translate_Platform__ (HWND hwnd);
+
+void M_CreateWindow (_my_win_struct_ winstr);
+
+inline bool akRectangle (int x0, int y0, int x1, int y1);
+inline bool akLine      (int x0, int y0, int x1, int y1);
+
+
+    //}
+
+    //{ REALESES
+
+inline void __Translate_Platform__ (HWND hwnd)
+    {
+    WinBlocked = false;
+    InvalidateRect (hwnd, NULL, true);
+    }
+
+inline void M_CreateWindow (_my_win_struct_ winstr)
+    {
+    _beginthread (_fred_massage, 0, &winstr);
+    }
+
+inline bool akLine (int x0, int y0, int x1, int y1)
+    {
+    if (MoveToEx (hdc_buf_2, x0, y0, NULL) == false)
+        return false;
+    if (LineTo   (hdc_buf_2, x1, y1      ) == false)
+        return false;
+
+    return true;
+    }
+
+inline bool akRectangle (int x0, int y0, int x1, int y1)
+    {
+    return Rectangle (hdc_buf_2, x0, y0, x1, y1);
+    }
+
+void _fred_massage (void* winstr_param)
+    {
+    _my_win_struct_* winstr = (_my_win_struct_*) winstr_param;
+
+
+
+
+    WNDCLASSEX wincl = {sizeof (WNDCLASSEX)};        /* Data structure for the windowclass */
+
+    wincl.hInstance = winstr->hThisInstance;
+    wincl.lpszClassName = szClassName;
+    wincl.lpfnWndProc = WindowProcedure;      /* This function is called by windows */
+    wincl.style = CS_DBLCLKS;                 /* Catch double-clicks */
+
+
+    wincl.hIcon = LoadIcon (NULL, IDI_APPLICATION);
+    wincl.hIconSm = LoadIcon (NULL, IDI_APPLICATION);
+    wincl.hCursor = LoadCursor (NULL, IDC_ARROW);
+    wincl.hbrBackground = (HBRUSH) GetStockObject(HOLLOW_BRUSH);
+
+    if (!RegisterClassEx (&wincl))
+        return;
+
+    winstr->hwnd = CreateWindowEx (
+           0,                   /* Extended possibilites for variation */
+           szClassName,         /* Classname */
+           winstr->NAME,       /* Title Text */
+           WS_OVERLAPPEDWINDOW, /* default window */
+           CW_USEDEFAULT,       /* Windows decides the position */
+           CW_USEDEFAULT,       /* where the window ends up on the screen */
+           winstr->sizeX,                 /* The programs width */
+           winstr->sizeY,                 /* and height in pixels */
+           HWND_DESKTOP,        /* The window is a child-window to desktop */
+           NULL,                /* No menu */
+           winstr->hThisInstance,       /* Program Instance handler */
+           NULL                 /* No Window Creation data */
+           );
+
+
+
+    ShowWindow (winstr->hwnd, winstr->nFunsterStil);
+
+    HDC wndDC = GetDC (winstr->hwnd);
+
+    hdc_buf_2 = wndDC;//CreateCompatibleDC (wndDC);
+    /*if (!hdc_buf_2) cout << "annot create buffer: CreateCompatibleDC() failed";//TX_DEBUG_ERROR ("Cannot create buffer: CreateCompatibleDC() failed");
+
+    HBITMAP bmap = /*bitmap? bitmap : *//*CreateCompatibleBitmap (wndDC, winstr->sizeX, winstr->sizeY);
+    if (!bmap) cout << "Cannot create buffer: CreateCompatibleBitmap() failed";
+
+    SelectObject (hdc_buf_2, bmap);
+    */
+
+    WinCreated = true;
+
+
+
+    MSG msg = {};            /* Here messages to the application are saved */
+
+    while (GetMessage (&msg, NULL, 0, 0))
+        {
+
+
+        TranslateMessage (&msg);
+        DispatchMessage  (&msg);
+
+        Sleep (0);
+        }
+
+    }
+
+LRESULT CALLBACK WindowProcedure (HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+    {
+    switch (message)                  /* handle the messages */
+        {
+        case WM_DESTROY:
+            {
+            PostQuitMessage (0);       /* send a WM_QUIT to the message queue */
+            break;
+            }
+
+        case WM_PAINT:
+            {
+            //while (WinBlocked == true) Sleep(0);
+            //WinBlocked = true;
+
+            //cout << WinBlocked << true << "\n";
+
+            //BitBlt (GetDC(hwnd), 0, 0, WinSizeX, WinSizeY, hdc_buf_2, 0, 0, SRCCOPY);
+            //PAINTSTRUCT Ps = {};
+
+            //HDC hdc = BeginPaint(hwnd, &Ps);
+
+            //HBRUSH hBrush = CreateSolidBrush(RGB(255, 0, 0));
+            //SelectObject(hdc, hBrush);
+            //HPEN pen = CreatePen(PS_DASHDOTDOT, 1, RGB(0, 255, 0));
+            //SelectObject(hdc, pen);
+            //Rectangle (hdc, 110, 100, 200, 200);
+            //DeleteObject(hBrush);
+
+            //EndPaint(hwnd, &Ps);
+
+            break;
+
+            }
+
+
+
+        default:                      /* for messages that we don't deal with */
+            return DefWindowProc (hwnd, message, wParam, lParam);
+        }
+
+    return 0;
+    }
+
+    //}
+
+    //}
+
+    //}
+
+#endif                               //}
