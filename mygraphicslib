@@ -1,10 +1,63 @@
 /* README
-
-
+It is objecting graphics libruary witch can help you in drawing
+* $name      Mgraphicslib
+* $autor     Alex Kistev
+* $date      2017
+* $version   1.0
+* $copyright (C) Mgraphicslib (1.0), Alex Kistev, 2017
 */
 
 
-#ifndef __MY_GRAPHICS_LIB_INCLUDED__ //{
+#ifndef __M_GRAPHICS_LIB_INCLUDED__ //{
+
+    //{ DEFINES
+
+#define __M_GRAPHICS_LIB_INCLUDED__
+
+#define __MGL_CFG_SELECTED_CODE__ -1
+
+#define __MGL_CFG_CREATED_ASSERTED__     _IFCREATEDA_();
+#define __MGL_CFG_NOT_CREATED_ASSERTED__ _IFNCREATEDA_();
+
+#define __MGL_WINPROC_SET_MOUSE__ OnMOUSEMOVE  (hwnd, wParam, lParam);
+
+#define MMB_EMPTY 0
+#define MMB_LEFT  1
+#define MMB_RIGHT 2
+#define MMB_FULL  3
+
+    //}
+
+    //{ VERSION
+
+#if !defined (WINVER) //{
+    #define   WINVER                   0x0500   // Defaults to Windows 2000
+    #define   WINDOWS_ENABLE_CPLUSPLUS
+#endif                //}
+
+#ifndef __M_GRAPHICS_LIB_VERSION__ //{
+    #define __M_GRAPHICS_LIB_VERSION__ 1.1
+#endif                              //}
+
+#if !defined (__cplusplus) //{
+
+    #error  Mgl needs c++ for compiling
+
+#endif                     //}
+
+#if !defined (_WIN32_WINNT) //{
+    #define   _WIN32_WINNT   WINVER      // Defaults to the same as WINVER
+#endif                      //}
+
+#if !defined (_WIN32_IE) //{
+    #define   _WIN32_IE      WINVER      // Defaults to the same as WINVER
+#endif                   //}
+
+#if !defined (_USE_MATH_DEFINES) //{
+    #define   _USE_MATH_DEFINES                       // math.h's M_PI etc.
+#endif                           //}
+
+    //}
 
     //{ INCLUDES
 
@@ -12,41 +65,38 @@
 #include <wincon.h>
 #include <process.h>
 #include <stdio.h>
+#include <assert.h>
+#include <shellapi.h>
 #include <iostream>
 using namespace std;
 
     //}
 
-    //{ VERSION
-
-#ifndef (WINVER) //{
-    #define   WINVER                   0x0500   // Defaults to Windows 2000
-#endif           //}
-
-
-#ifndef (__MY_GRAPHICS_LIB_VERSION__)
-    #define __MY_GRAPHICS_LIB_VERSION__ "1.0"
-#endif
-    //}
-
     //{ MAIN CODE
 
-    //{ GLOBAL CROPE
+    namespace Mgl
+        {
+
+        //{ GLOBAL CROPE
 
 volatile bool WinCreated = false;
 
-volatile bool WinBlocked =  true;
+HDC win_hdc = NULL;
+HWND win_hwnd = NULL;
 
-HDC hdc_buf_2 = NULL;
+const char szClassName[ ] = "ClassName1";
 
-char szClassName[ ] = "WindowsApp";
+POINT _M_MousePos = {0, 0};
+int _M_MouseButtons = 0;
+double _M_MouseWheel = 0;
 
+        //}
 
-    //}
+        //{ CLASSES
 
-    //{ CLASSES
+            //{ PROTOTIPES
 
-struct _my_win_struct_
+struct _m_win_struct_
     {
     HWND hwnd;
     size_t sizeX, sizeY;
@@ -54,136 +104,442 @@ struct _my_win_struct_
     int nFunsterStil;
     HINSTANCE hThisInstance;
 
-    _my_win_struct_   (          ) :
+    _m_win_struct_   (          ) :
         hwnd          (NULL      ),
         sizeX         (800       ),
         sizeY         (600       ),
         NAME          ("Untitled"),
-        nFunsterStil  (1         ),
+        nFunsterStil  (10        ),
         hThisInstance (NULL      )
-        {
-        }
-
+        {}
     };
 
-    //}
-
-    //{ FUNCTIONS
-
-    //{ PROTOTIPES
-
-LRESULT CALLBACK WindowProcedure (HWND, UINT, WPARAM, LPARAM);
-
-void _fred_massage (void* winstr_param);
-
-inline void __Translate_Platform__ (HWND hwnd);
-
-void M_CreateWindow (_my_win_struct_ winstr);
-
-inline bool akRectangle (int x0, int y0, int x1, int y1);
-inline bool akLine      (int x0, int y0, int x1, int y1);
-
-
-    //}
-
-    //{ REALESES
-
-inline void __Translate_Platform__ (HWND hwnd)
+class M_HDC
     {
-    WinBlocked = false;
-    InvalidateRect (hwnd, NULL, true);
+    private:
+
+    int name;
+    size_t sizeX_, sizeY_, posX_, posY_;
+    HDC hdc;
+
+    public:
+
+    M_HDC (int _name, size_t _sizeX, size_t _sizeY, size_t _posX, size_t _posY)
+        {
+        Set (_name, _sizeX, _sizeY, _posX, _posY);
+        }
+
+    ~M_HDC ()
+        {}
+
+    inline int    getName  ();
+    inline size_t getSizeX ();
+    inline size_t getSizeY ();
+    inline size_t getPosX  ();
+    inline size_t getPosY  ();
+    inline HDC   _getDC    ();
+
+    inline void Set (int _name, size_t _sizeX, size_t _sizeY, size_t _posX, size_t _posY);
+
+    inline void setPen   (HPEN     pen_);
+    inline void setBrush (HBRUSH brush_);
+
+    inline bool _translate_platform_ ();
+    };
+
+class M_CONFIGURATION
+    {
+    private:
+
+    bool created;
+    size_t number_hdcs;
+    size_t selected;
+    M_HDC* DCs;
+
+    inline void _IFCREATEDA_();
+    inline void _IFNCREATEDA_();
+
+    inline int  _GET_ (int code);
+
+    public:
+
+    M_CONFIGURATION () :
+        created (false),
+        number_hdcs (0),
+        selected    (0),
+        DCs      (NULL)
+        {}
+
+    ~M_CONFIGURATION ()
+        {
+        if (created == true)
+            M_DELETE ();
+        }
+
+    inline void M_CREATE ();
+    inline void M_ADD    (int _name, size_t _sizeX, size_t _sizeY, size_t _posX, size_t _posY);
+    inline void M_DELETE ();
+
+    inline void M_SELECT (                          int code);
+    inline void M_SELECT (HBRUSH brush_                     );
+    inline void M_SELECT (               HPEN pen_          );
+    inline void M_SELECT (HBRUSH brush_, HPEN pen_          );
+    inline void M_SELECT (HBRUSH brush_, HPEN pen_, int code);
+    inline void M_SELECT (HBRUSH brush_,            int code);
+    inline void M_SELECT (               HPEN pen_, int code);
+
+    inline void M_SETTEXTCOLOR (COLORREF color);
+    inline void M_SETBKMODE    (COLORREF color);
+
+    inline void M_TRANSLATE (        );
+    inline void M_TRANSLATE (int code);
+
+    inline bool M_LINE      (int x0, int y0, int x1, int y1, int code = __MGL_CFG_SELECTED_CODE__);
+    inline bool M_RECTANGLE (int x0, int y0, int x1, int y1, int code = __MGL_CFG_SELECTED_CODE__);
+    inline bool M_ELLIPSE   (int x0, int y0, int x1, int y1, int code = __MGL_CFG_SELECTED_CODE__);
+    inline bool M_CIRCLE    (int x0, int y0, int r, int code = __MGL_CFG_SELECTED_CODE__);
+    inline bool M_DRAWTEXT  (int x0, int y0, char* text,           UINT tp = DT_NOCLIP);
+    inline bool M_DRAWTEXT  (int x0, int y0, char* text, int code, UINT tp = DT_NOCLIP);
+    inline bool M_BITBLT    (int x0, int y0, int sizex, int sizey, HDC dc, int dc_x0, int dc_y0          );
+    inline bool M_BITBLT    (int x0, int y0, int sizex, int sizey, HDC dc, int dc_x0, int dc_y0, int code);
+
+    inline HDC  M_GETDC ();
+    };
+
+            //}
+
+            //{ REALESES
+
+                //{ M_HDC
+
+inline int    M_HDC::getName  ()
+    {
+    return name;
     }
 
-inline void M_CreateWindow (_my_win_struct_ winstr)
+inline size_t M_HDC::getSizeX ()
     {
-    _beginthread (_fred_massage, 0, &winstr);
+    return sizeX_;
     }
 
-inline bool akLine (int x0, int y0, int x1, int y1)
+inline size_t M_HDC::getSizeY ()
     {
-    if (MoveToEx (hdc_buf_2, x0, y0, NULL) == false)
+    return sizeY_;
+    }
+
+inline size_t M_HDC::getPosX  ()
+    {
+    return posX_;
+    }
+
+inline size_t M_HDC::getPosY  ()
+    {
+    return posY_;
+    }
+
+inline HDC   M_HDC::_getDC    ()
+    {
+    return hdc;
+    }
+
+inline void  M_HDC::Set       (int _name, size_t _sizeX, size_t _sizeY, size_t _posX, size_t _posY)
+    {
+    sizeX_ = _sizeX;
+    sizeY_ = _sizeY;
+    posX_  = _posX ;
+    posY_  = _posY ;
+    name   =  _name;
+
+    hdc = CreateCompatibleDC (win_hdc);
+    if (!hdc)  cout << "Cannot create buffer: CreateCompatibleDC() failed";//TX_DEBUG_ERROR ("Cannot create buffer: CreateCompatibleDC() failed");
+
+    HBITMAP bmap = CreateCompatibleBitmap (win_hdc, sizeX_, sizeY_);
+    if (!bmap) cout << "Cannot create buffer: CreateCompatibleBitmap() failed";
+
+    SelectObject (hdc, bmap);
+    }
+
+inline void  M_HDC::setPen    (    HPEN pen_)
+    {
+    SelectObject (hdc, pen_);
+    }
+
+inline void  M_HDC::setBrush  (HBRUSH brush_)
+    {
+    SelectObject (hdc, brush_);
+    }
+
+inline bool  M_HDC::_translate_platform_ ()
+    {
+    BitBlt(win_hdc, posX_, posY_, sizeX_, sizeY_, hdc, 0, 0, SRCCOPY);
+    }
+
+                //}
+
+                //{ M_CONFIGURATION
+
+                    //{ IN LIBARY FUNCTIONS PRIVATE
+
+inline void M_CONFIGURATION::_IFCREATEDA_()
+    {
+    if (created != true) MessageBox (win_hwnd, "configurationis isn't created", "ERROR", MB_OK);
+    }
+
+inline void M_CONFIGURATION::_IFNCREATEDA_()
+    {
+    if (created == true) MessageBox (win_hwnd, "configurationis is created", "ERROR", MB_OK);
+    }
+
+inline int  M_CONFIGURATION::_GET_ (int code)
+    {
+    if (code == __MGL_CFG_SELECTED_CODE__) return selected;
+    int i = 0;
+    while (i <= number_hdcs)
+        {
+        if (i == number_hdcs)       break;
+        if (code == DCs[i].getName()) break;
+        i++;
+        }
+    if (i == number_hdcs)
+        printf ("cannot get object (%i) becose its not found", code);
+    else
+        return i;
+    return -1;
+    MessageBox (win_hwnd, "no search code", "ERROR", MB_OK);
+    }
+
+                    //}
+
+                    //{ OUT FUNCTIONS OR FOR USER
+
+inline void M_CONFIGURATION::M_CREATE ()
+    {
+    __MGL_CFG_NOT_CREATED_ASSERTED__
+
+    created = true;
+    DCs = (M_HDC*) calloc (number_hdcs, sizeof(M_HDC));
+    }
+
+inline void M_CONFIGURATION::M_ADD (int _name, size_t _sizeX, size_t _sizeY, size_t _posX, size_t _posY)
+    {
+    __MGL_CFG_CREATED_ASSERTED__
+
+    int num = 0;
+    for (int i = 0; i < number_hdcs; i++) if (_name == DCs[i].getName()) num++;
+    if (num != 0) printf ("can't add to configuration becase name (%i) had already been declared\n", _name);
+    else
+        {
+        if (_name == __MGL_CFG_SELECTED_CODE__) printf ("you can't use code (%i) becose it is brownd by system", __MGL_CFG_SELECTED_CODE__);
+        else
+            {
+            number_hdcs++;
+            //M_HDC* dcss = (M_HDC*) calloc (number_hdcs - 1, sizeof(M_HDC));
+            //for (int i = 0; i < number_hdcs; i++)
+            //    dcss[i].Set (DCs[i].getName(), DCs[i].getSizeX(), DCs[i].getSizeY(), DCs[i].getPosX(), DCs[i].getPosY());
+            realloc (DCs, number_hdcs*sizeof(M_HDC));
+            //for (int i = 0; i < number_hdcs; i++)
+            //    DCs[i].Set (dcss[i].getName(), dcss[i].getSizeX(), dcss[i].getSizeY(), dcss[i].getPosX(), dcss[i].getPosY());
+            //free (dcss);
+            DCs[number_hdcs - 1].Set(_name, _sizeX, _sizeY, _posX, _posY);
+            }
+        }
+    }
+
+inline void M_CONFIGURATION::M_DELETE ()
+    {
+    __MGL_CFG_CREATED_ASSERTED__
+
+    created = false;
+    for (int i = 0; i < number_hdcs; i++)
+        DeleteDC(DCs[i]._getDC());
+    number_hdcs = 0;
+    selected = 0;
+    free(DCs);
+    }
+
+inline void M_CONFIGURATION::M_SELECT (                          int code)
+    {
+    selected = _GET_ (code);
+    }
+
+inline void M_CONFIGURATION::M_SELECT (HBRUSH brush_                     )
+    {
+    __MGL_CFG_CREATED_ASSERTED__
+
+    DCs[selected   ].setBrush (brush_);
+    }
+
+inline void M_CONFIGURATION::M_SELECT (               HPEN pen_          )
+    {
+    __MGL_CFG_CREATED_ASSERTED__
+
+    DCs[selected   ].setPen   (  pen_);
+    }
+
+inline void M_CONFIGURATION::M_SELECT (HBRUSH brush_, HPEN pen_          )
+    {
+    __MGL_CFG_CREATED_ASSERTED__
+
+    DCs[selected   ].setBrush (brush_);
+    DCs[selected   ].setPen   (  pen_);
+    }
+
+inline void M_CONFIGURATION::M_SELECT (HBRUSH brush_, HPEN pen_, int code)
+    {
+    __MGL_CFG_CREATED_ASSERTED__
+
+    DCs[_GET_(code)].setBrush (brush_);
+    DCs[_GET_(code)].setPen   (  pen_);
+    }
+
+inline void M_CONFIGURATION::M_SELECT (HBRUSH brush_,            int code)
+    {
+    __MGL_CFG_CREATED_ASSERTED__
+
+    DCs[_GET_(code)].setBrush (brush_);
+    }
+
+inline void M_CONFIGURATION::M_SELECT (               HPEN pen_, int code)
+    {
+    __MGL_CFG_CREATED_ASSERTED__
+
+    DCs[_GET_(code)].setPen   (  pen_);
+    }
+
+inline void M_CONFIGURATION::M_SETTEXTCOLOR (COLORREF color)
+    {
+    SetTextColor (DCs[selected]._getDC(), color);
+    }
+
+inline void M_CONFIGURATION::M_SETBKMODE    (COLORREF color)
+    {
+    SetBkMode (DCs[selected]._getDC(), color);
+    }
+
+inline void M_CONFIGURATION::M_TRANSLATE (        )
+    {
+    __MGL_CFG_CREATED_ASSERTED__
+
+    DCs[selected   ]._translate_platform_();
+    }
+
+inline void M_CONFIGURATION::M_TRANSLATE (int code)
+    {
+    __MGL_CFG_CREATED_ASSERTED__
+
+    DCs[_GET_(code)]._translate_platform_();
+    }
+
+inline bool M_CONFIGURATION::M_LINE (int x0, int y0, int x1, int y1, int code /* = __MGL_CFG_SELECTED_CODE__ */ )
+    {
+    __MGL_CFG_CREATED_ASSERTED__
+
+    if (MoveToEx (DCs[_GET_(code)]._getDC(), x0, y0, NULL) == false)
         return false;
-    if (LineTo   (hdc_buf_2, x1, y1      ) == false)
+    if (LineTo   (DCs[_GET_(code)]._getDC(), x1, y1      ) == false)
         return false;
 
     return true;
     }
 
-inline bool akRectangle (int x0, int y0, int x1, int y1)
+inline bool M_CONFIGURATION::M_RECTANGLE (int x0, int y0, int x1, int y1, int code /* = __MGL_CFG_SELECTED_CODE__ */ )
     {
-    return Rectangle (hdc_buf_2, x0, y0, x1, y1);
+    __MGL_CFG_CREATED_ASSERTED__
+
+    return Rectangle (DCs[_GET_(code)]._getDC(), x0, y0, x1, y1);
     }
 
-void _fred_massage (void* winstr_param)
+inline bool M_CONFIGURATION::M_ELLIPSE (int x0, int y0, int x1, int y1, int code /* = __MGL_CFG_SELECTED_CODE__ */ )
     {
-    _my_win_struct_* winstr = (_my_win_struct_*) winstr_param;
+    __MGL_CFG_CREATED_ASSERTED__
 
-
-
-
-    WNDCLASSEX wincl = {sizeof (WNDCLASSEX)};        /* Data structure for the windowclass */
-
-    wincl.hInstance = winstr->hThisInstance;
-    wincl.lpszClassName = szClassName;
-    wincl.lpfnWndProc = WindowProcedure;      /* This function is called by windows */
-    wincl.style = CS_DBLCLKS;                 /* Catch double-clicks */
-
-
-    wincl.hIcon = LoadIcon (NULL, IDI_APPLICATION);
-    wincl.hIconSm = LoadIcon (NULL, IDI_APPLICATION);
-    wincl.hCursor = LoadCursor (NULL, IDC_ARROW);
-    wincl.hbrBackground = (HBRUSH) GetStockObject(HOLLOW_BRUSH);
-
-    if (!RegisterClassEx (&wincl))
-        return;
-
-    winstr->hwnd = CreateWindowEx (
-           0,                   /* Extended possibilites for variation */
-           szClassName,         /* Classname */
-           winstr->NAME,       /* Title Text */
-           WS_OVERLAPPEDWINDOW, /* default window */
-           CW_USEDEFAULT,       /* Windows decides the position */
-           CW_USEDEFAULT,       /* where the window ends up on the screen */
-           winstr->sizeX,                 /* The programs width */
-           winstr->sizeY,                 /* and height in pixels */
-           HWND_DESKTOP,        /* The window is a child-window to desktop */
-           NULL,                /* No menu */
-           winstr->hThisInstance,       /* Program Instance handler */
-           NULL                 /* No Window Creation data */
-           );
-
-
-
-    ShowWindow (winstr->hwnd, winstr->nFunsterStil);
-
-    HDC wndDC = GetDC (winstr->hwnd);
-
-    hdc_buf_2 = wndDC;//CreateCompatibleDC (wndDC);
-    /*if (!hdc_buf_2) cout << "annot create buffer: CreateCompatibleDC() failed";//TX_DEBUG_ERROR ("Cannot create buffer: CreateCompatibleDC() failed");
-
-    HBITMAP bmap = /*bitmap? bitmap : *//*CreateCompatibleBitmap (wndDC, winstr->sizeX, winstr->sizeY);
-    if (!bmap) cout << "Cannot create buffer: CreateCompatibleBitmap() failed";
-
-    SelectObject (hdc_buf_2, bmap);
-    */
-
-    WinCreated = true;
-
-
-
-    MSG msg = {};            /* Here messages to the application are saved */
-
-    while (GetMessage (&msg, NULL, 0, 0))
-        {
-
-
-        TranslateMessage (&msg);
-        DispatchMessage  (&msg);
-
-        Sleep (0);
-        }
-
+    return Ellipse (DCs[_GET_(code)]._getDC(), x0, y0, x1, y1);
     }
+
+inline bool M_CONFIGURATION::M_CIRCLE (int x0, int y0, int r, int code /* = __MGL_CFG_SELECTED_CODE__ */ )
+    {
+    return M_ELLIPSE (x0 - r, y0 - r, x0 + r, y0 + r, code);
+    }
+
+inline bool M_CONFIGURATION::M_DRAWTEXT  (int x0, int y0, char* text,           UINT tp /* = DT_NOCLIP */ )
+    {
+    __MGL_CFG_CREATED_ASSERTED__
+
+    RECT rt;
+    rt.left = x0;
+    rt.top  = y0;
+    DrawText (DCs[selected   ]._getDC(), text, -1, &rt, tp);
+    }
+
+inline bool M_CONFIGURATION::M_DRAWTEXT  (int x0, int y0, char* text, int code, UINT tp /* = DT_NOCLIP */ )
+    {
+    __MGL_CFG_CREATED_ASSERTED__
+
+    RECT rt;
+    rt.left = x0;
+    rt.top  = y0;
+    DrawText (DCs[_GET_(code)]._getDC(), text, -1, &rt, tp);
+    }
+
+inline bool M_CONFIGURATION::M_BITBLT    (int x0, int y0, int sizex, int sizey, HDC dc, int dc_x0, int dc_y0          )
+    {
+    __MGL_CFG_CREATED_ASSERTED__
+
+    BitBlt(DCs[selected   ]._getDC(), x0, y0, sizex, sizey, dc, dc_x0, dc_y0, SRCCOPY);
+    }
+
+inline bool M_CONFIGURATION::M_BITBLT    (int x0, int y0, int sizex, int sizey, HDC dc, int dc_x0, int dc_y0, int code)
+    {
+    __MGL_CFG_CREATED_ASSERTED__
+
+    BitBlt(DCs[_GET_(code)]._getDC(), x0, y0, sizex, sizey, dc, dc_x0, dc_y0, SRCCOPY);
+    }
+
+inline HDC  M_CONFIGURATION::M_GETDC ()
+    {
+    __MGL_CFG_CREATED_ASSERTED__
+
+    return DCs[selected]._getDC();
+    }
+
+                    //}
+
+                //}
+
+            //}
+
+        //}
+
+        //{ FUNCTIONS
+
+            //{ PROTOTIPES
+
+LRESULT CALLBACK WindowProcedure (HWND, UINT, WPARAM, LPARAM);
+
+void _thred_massage (void* winstr_param);
+
+void OnMOUSEMOVE  (HWND, WPARAM, LPARAM);
+HICON _ICON_ ();
+
+void MCreateWindow (_m_win_struct_ winstr);
+
+HDC   MLoadImage (char* filename);
+HICON MLoadIcon  (char* filename);
+
+inline int MMessageBox (char* title, char* text, UINT flag = MB_OK);
+
+inline POINT MGetMousePos ();
+inline int MGetMouseX ();
+inline int MGetMouseY ();
+inline int MGetMouseButtons ();
+
+inline HDC MCreateComatibleDC (size_t sizeX_, size_t sizeY_);
+
+inline bool MNotifyIcon (HICON icon, char* Tip, char* InfoTitle, char* Info, DWORD flags = NIIF_INFO);
+
+            //}
+
+            //{ REALESES
 
 LRESULT CALLBACK WindowProcedure (HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
@@ -199,28 +555,48 @@ LRESULT CALLBACK WindowProcedure (HWND hwnd, UINT message, WPARAM wParam, LPARAM
             {
             //while (WinBlocked == true) Sleep(0);
             //WinBlocked = true;
-
             //cout << WinBlocked << true << "\n";
-
             //BitBlt (GetDC(hwnd), 0, 0, WinSizeX, WinSizeY, hdc_buf_2, 0, 0, SRCCOPY);
             //PAINTSTRUCT Ps = {};
-
             //HDC hdc = BeginPaint(hwnd, &Ps);
-
+            //LPCWSTR message="My First Window";
+            //RECT rect;
+            //HDC wdc = GetWindowDC(hwnd);
+            //GetClientRect (hwnd, &rect) ;
+            //SetTextColor (win_hdc, RGB(200, 100, 0));
+            //SetBkMode(win_hdc, TRANSPARENT);
+            //rect.left = 40;
+            //rect.top = 100;
+            //DrawText (win_hdc, "My First Window _", -1, &rect, DT_NOCLIP) ;
+            //DeleteDC(wdc);
             //HBRUSH hBrush = CreateSolidBrush(RGB(255, 0, 0));
             //SelectObject(hdc, hBrush);
             //HPEN pen = CreatePen(PS_DASHDOTDOT, 1, RGB(0, 255, 0));
             //SelectObject(hdc, pen);
             //Rectangle (hdc, 110, 100, 200, 200);
             //DeleteObject(hBrush);
-
             //EndPaint(hwnd, &Ps);
-
             break;
-
             }
 
+        case WM_LBUTTONUP:
+        case WM_LBUTTONDOWN:
+        case WM_RBUTTONUP:
+        case WM_RBUTTONDOWN:
+        case WM_MBUTTONUP:
+        case WM_MBUTTONDOWN:
+        case WM_MOUSEMOVE:
+            {
+            __MGL_WINPROC_SET_MOUSE__
+            break;
+            }
 
+        case WM_MOUSEWHEEL:
+                {
+                _M_MouseWheel+= GET_WHEEL_DELTA_WPARAM(wParam)/120;
+                //cout << GET_WHEEL_DELTA_WPARAM(wParam);
+                break;
+                }
 
         default:                      /* for messages that we don't deal with */
             return DefWindowProc (hwnd, message, wParam, lParam);
@@ -229,9 +605,199 @@ LRESULT CALLBACK WindowProcedure (HWND hwnd, UINT message, WPARAM wParam, LPARAM
     return 0;
     }
 
-    //}
+void _thred_massage (void* winstr_param)
+    {
+    _m_win_struct_* winstr = (_m_win_struct_*) winstr_param;
 
-    //}
+    WNDCLASSEX wincl = {sizeof (WNDCLASSEX)};        /* Data structure for the windowclass */
+
+    wincl.hInstance = winstr->hThisInstance;
+    wincl.lpszClassName = szClassName;
+    wincl.lpfnWndProc = WindowProcedure;      /* This function is called by windows */
+    wincl.style = CS_DBLCLKS;                 /* Catch double-clicks */
+    wincl.hIcon = LoadIcon (NULL, IDI_APPLICATION);
+    wincl.hIconSm = LoadIcon (NULL, IDI_APPLICATION);
+    wincl.hCursor = LoadCursor (NULL, IDC_ARROW);
+    wincl.hbrBackground = (HBRUSH) GetStockObject(HOLLOW_BRUSH);
+
+    if (!RegisterClassEx (&wincl))
+        printf("RegisterClassEx failed");
+
+    winstr->hwnd = CreateWindowEx (
+           0,                        /* Extended possibilites for variation */
+           szClassName,              /* Classname */
+           winstr->NAME,             /* Title Text */
+           WS_OVERLAPPEDWINDOW,      /* default window */
+           CW_USEDEFAULT,            /* Windows decides the position */
+           CW_USEDEFAULT,            /* where the window ends up on the screen */
+           winstr->sizeX,            /* The programs width */
+           winstr->sizeY,            /* and height in pixels */
+           HWND_DESKTOP,             /* The window is a child-window to desktop */
+           NULL,                     /* No menu */
+           winstr->hThisInstance,    /* Program Instance handler */
+           NULL                      /* No Window Creation data */
+           );
+
+    ShowWindow (winstr->hwnd, winstr->nFunsterStil);
+
+    win_hdc = GetDC (winstr->hwnd);
+    win_hwnd = winstr->hwnd;
+
+    WinCreated = true;
+
+    MSG msg = {};            /* Here messages to the application are saved */
+    while (GetMessage (&msg, NULL, 0, 0))
+        {
+        TranslateMessage (&msg);
+        DispatchMessage  (&msg);
+
+        Sleep (0);
+        }
+    }
+
+void OnMOUSEMOVE  (HWND wnd, WPARAM wpm, LPARAM lpm)
+    {
+    _M_MousePos.x   = LOWORD (lpm);
+    _M_MousePos.y   = HIWORD (lpm);
+    _M_MouseButtons = (int) wpm;
+    }
+
+inline void MCreateWindow (_m_win_struct_ winstr)
+    {
+    _beginthread (_thred_massage, 0, &winstr);
+    while (WinCreated == false) {}
+    }
+
+HDC MLoadImage (char* filename)
+    {
+    HBITMAP image_ = (HBITMAP) LoadImage (NULL, filename, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+    if (!image_) printf("LoadImage failed, maybe file name is not correct");
+
+    HDC dc = CreateCompatibleDC (win_hdc);
+
+    SelectObject(dc, image_);
+
+    return dc;
+    }
+
+HICON MLoadIcon (char* filename)
+    {
+    return (HICON) LoadImage (NULL, filename, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+    }
+
+HICON _ICON_ ()
+    {
+    const char image16 [16*16+1] =
+        "0000001111000000"
+        "0000112222110000"
+        "0001222222221000"
+        "0012222222222100"
+        "0122222222222210"
+        "0123232222222210"
+        "1223232222222321"
+        "1223232222222321"
+        "1232323223223221"
+        "1232323232323221"
+        "0132323223323310"
+        "0122222222322210"
+        "0012222233222100"
+        "0001222222221000"
+        "0000112222110000"
+        "0000001111000000";
+
+    const COLORREF pal[4] = { RGB(239, 228, 176), RGB(0, 166, 71), RGB(181, 230, 29), RGB(250, 7, 44) };
+
+    HDC dcMask  = MCreateComatibleDC(16, 16);
+    HDC dcColor = MCreateComatibleDC(16, 16);
+
+    for (int i = 0; i < 16*16; i++)
+        {
+        SetPixel (dcColor, i % 16, i / 16, pal [image16[i] - '0']);
+        }
+
+    ICONINFO info = { true, 0, 0, (HBITMAP) GetCurrentObject (dcMask,  OBJ_BITMAP),
+                                  (HBITMAP) GetCurrentObject (dcColor, OBJ_BITMAP) };
+
+    HICON icon = CreateIconIndirect (&info);
+    //assert (icon);
+
+    DeleteDC (dcMask);
+    DeleteDC (dcColor);
+
+    return icon;
+    }
+
+inline int MMessageBox (char* title, char* text, UINT flag /* == MB_OK */ )
+    {
+    return MessageBox (win_hwnd, text, title, flag);
+    }
+
+inline POINT MGetMousePos ()
+    {
+    return _M_MousePos;
+    }
+
+inline int MGetMouseX ()
+    {
+    return _M_MousePos.x;
+    }
+
+inline int MGetMouseY ()
+    {
+    return _M_MousePos.y;
+    }
+
+inline int MGetMouseButtons ()
+    {
+    return _M_MouseButtons;
+    }
+
+inline int MDeltaMouseWheel ()
+    {
+    int a = _M_MouseWheel;
+    _M_MouseWheel = 0;
+    return a;
+    }
+
+HDC MCreateComatibleDC (size_t sizeX_, size_t sizeY_)
+    {
+    HDC hdc = CreateCompatibleDC (win_hdc);
+    if (!hdc)  cout << "annot create buffer: CreateCompatibleDC() failed";//TX_DEBUG_ERROR ("Cannot create buffer: CreateCompatibleDC() failed");
+
+    HBITMAP bmap = CreateCompatibleBitmap (win_hdc, sizeX_, sizeY_);
+    if (!bmap) cout << "Cannot create buffer: CreateCompatibleBitmap() failed";
+
+    SelectObject (hdc, bmap);
+
+    return hdc;
+    }
+
+inline bool MNotifyIcon (HICON icon, char* Tip, char* InfoTitle, char* Info, DWORD flags /* == NIIF_INFO */ )
+    {
+    NOTIFYICONDATA nid = { sizeof (nid) };
+
+    nid.uFlags = NIF_ICON | NIF_TIP | NIF_INFO;
+    nid.hWnd   = NULL;
+    nid.uID    = 1;
+    nid.hIcon  = icon;
+    strncpy    (nid.szTip, Tip, sizeof (nid.szTip));
+    strncpy    (nid.szInfoTitle, InfoTitle, sizeof (nid.szInfoTitle));
+    strncpy    (nid.szInfo, Info, sizeof(nid.szInfo));
+    nid.dwInfoFlags = flags;
+
+    if (Shell_NotifyIcon (NIM_ADD,    &nid) ||
+        Shell_NotifyIcon (NIM_MODIFY, &nid)) return false;
+
+    if (nid.hIcon) DestroyIcon (nid.hIcon);
+
+    return true;
+    }
+
+            //}
+
+        //}
+
+        }
 
     //}
 
