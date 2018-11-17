@@ -19,16 +19,31 @@ It is objecting graphics libruary witch can help you in drawing
 #define __MGL_CFG_CREATED_ASSERTED__     _IFCREATEDA_();
 #define __MGL_CFG_NOT_CREATED_ASSERTED__ _IFNCREATEDA_();
 
-#define __MGL_WINPROC_SET_MOUSE__ OnMOUSEMOVE  (hwnd, wParam, lParam);
-
 #define MMB_EMPTY 0
 #define MMB_LEFT  1
 #define MMB_RIGHT 2
 #define MMB_FULL  3
 
+        //{
+
+#define M_ERROR( msg )   _M_Error (__FILE__, __LINE__, __FUNCTION__, msg)
+
+        //}
+
     //}
 
     //{ VERSION
+
+#if  defined (__STRICT_ANSI__) //{
+
+    #ifdef __GNUC__
+    #warning Mgl: Trying to extend strict ANSI compatibility   //Try to extend strict ANSI rules
+    #endif
+
+    #undef  __STRICT_ANSI__
+    #define __STRICT_ANSI__UNDEFINED
+
+#endif                         //}
 
 #if !defined (WINVER) //{
     #define   WINVER                   0x0500   // Defaults to Windows 2000
@@ -36,14 +51,28 @@ It is objecting graphics libruary witch can help you in drawing
 #endif                //}
 
 #ifndef __M_GRAPHICS_LIB_VERSION__ //{
-    #define __M_GRAPHICS_LIB_VERSION__ 1.1
-#endif                              //}
+    #define __M_GRAPHICS_LIB_VERSION__ 1.2
+#endif                             //}
+
+#ifndef __M_GRAPHICS_LIB_PREPROC_VERSION__ //{
+    #define __M_GRAPHICS_LIB_PREPROC_VERSION__ 120 //same as ver*100
+#endif                             //}
 
 #if !defined (__cplusplus) //{
 
     #error  Mgl needs c++ for compiling
 
 #endif                     //}
+
+#if  defined (_MSC_VER) && (_MSC_VER >= 1400)   // { MSVC 8 (2005) or greater
+
+    #pragma warning (disable: 26135)            // missing locking annotation
+    #pragma warning (disable: 28125)            // the function must be called from within a try/except block
+    #pragma warning (disable: 28159)            // consider using another function instead
+
+    #pragma setlocale ("russian")               // Set source file encoding
+
+#endif                                          // }
 
 #if !defined (_WIN32_WINNT) //{
     #define   _WIN32_WINNT   WINVER      // Defaults to the same as WINVER
@@ -67,7 +96,31 @@ It is objecting graphics libruary witch can help you in drawing
 #include <stdio.h>
 #include <assert.h>
 #include <shellapi.h>
+#include <fstream>
 #include <iostream>
+
+#include <stdlib.h>
+#include <stdarg.h>
+#include <string.h>
+#include <io.h>
+#include <fcntl.h>
+#include <direct.h>
+#include <process.h>
+#include <signal.h>
+#include <locale.h>
+#include <time.h>
+#include <float.h>
+
+#include <map>
+#include <vector>
+#include <string>
+#include <iostream>
+#include <algorithm>
+#include <exception>
+#include <stdexcept>
+
+#include <conio.h>
+
 using namespace std;
 
     //}
@@ -79,6 +132,8 @@ using namespace std;
 
         //{ GLOBAL CROPE
 
+            //{ TECNICAL
+
 volatile bool WinCreated = false;
 
 HDC win_hdc = NULL;
@@ -86,9 +141,14 @@ HWND win_hwnd = NULL;
 
 const char szClassName[ ] = "ClassName1";
 
+            //}
+
 POINT _M_MousePos = {0, 0};
 int _M_MouseButtons = 0;
 double _M_MouseWheel = 0;
+
+const unsigned _M_BUFSIZE = 1024;
+const unsigned _M_BIGBUFSIZE = 2048;
 
         //}
 
@@ -516,9 +576,8 @@ inline HDC  M_CONFIGURATION::M_GETDC ()
 
 LRESULT CALLBACK WindowProcedure (HWND, UINT, WPARAM, LPARAM);
 
-void _thred_massage (void* winstr_param);
+void _thread_massage (void* winstr_param);
 
-void OnMOUSEMOVE  (HWND, WPARAM, LPARAM);
 HICON _ICON_ ();
 
 void MCreateWindow (_m_win_struct_ winstr);
@@ -587,16 +646,17 @@ LRESULT CALLBACK WindowProcedure (HWND hwnd, UINT message, WPARAM wParam, LPARAM
         case WM_MBUTTONDOWN:
         case WM_MOUSEMOVE:
             {
-            __MGL_WINPROC_SET_MOUSE__
+            _M_MousePos.x   = LOWORD (lParam);
+            _M_MousePos.y   = HIWORD (lParam);
+            _M_MouseButtons = (int) wParam;
             break;
             }
 
         case WM_MOUSEWHEEL:
-                {
-                _M_MouseWheel+= GET_WHEEL_DELTA_WPARAM(wParam)/120;
-                //cout << GET_WHEEL_DELTA_WPARAM(wParam);
-                break;
-                }
+            {
+            _M_MouseWheel+= GET_WHEEL_DELTA_WPARAM(wParam)/120;
+            break;
+            }
 
         default:                      /* for messages that we don't deal with */
             return DefWindowProc (hwnd, message, wParam, lParam);
@@ -605,7 +665,7 @@ LRESULT CALLBACK WindowProcedure (HWND hwnd, UINT message, WPARAM wParam, LPARAM
     return 0;
     }
 
-void _thred_massage (void* winstr_param)
+void _thread_massage (void* winstr_param)
     {
     _m_win_struct_* winstr = (_m_win_struct_*) winstr_param;
 
@@ -655,16 +715,9 @@ void _thred_massage (void* winstr_param)
         }
     }
 
-void OnMOUSEMOVE  (HWND wnd, WPARAM wpm, LPARAM lpm)
-    {
-    _M_MousePos.x   = LOWORD (lpm);
-    _M_MousePos.y   = HIWORD (lpm);
-    _M_MouseButtons = (int) wpm;
-    }
-
 inline void MCreateWindow (_m_win_struct_ winstr)
     {
-    _beginthread (_thred_massage, 0, &winstr);
+    _beginthread (_thread_massage, 0, &winstr);
     while (WinCreated == false) {}
     }
 
@@ -791,6 +844,48 @@ inline bool MNotifyIcon (HICON icon, char* Tip, char* InfoTitle, char* Info, DWO
     if (nid.hIcon) DestroyIcon (nid.hIcon);
 
     return true;
+    }
+
+const char* _M_Error (const char file[], int line, const char func[], const char msg [])
+    {
+    DWORD winerr = GetLastError();
+    int crterr = errno;
+    int doserr = _doserrno;
+    unsigned threadId = GetCurrentThreadId();
+
+    string massbox_print = "";
+    string console_print = "";
+    char slg [_M_BIGBUFSIZE] = "";
+
+    sprintf (slg, "%d", line);
+
+    console_print += "Mgl tells:\n\n";
+    console_print += "File: "; console_print += file; console_print += ", ";
+    console_print += "Line: "; console_print += slg; console_print += ", ";
+    console_print += "Function: "; console_print += func; console_print += ".\n\n";
+
+    sprintf (slg, "%s", msg);
+    console_print += "With Message:"; console_print += slg; console_print += ".\n\n";
+
+    sprintf (slg, "%d", winerr);
+    console_print += "GetLastError(): "; console_print += slg; console_print += ".\n";
+
+    sprintf (slg, "%d", crterr);
+    console_print += "errno: "; console_print += slg; console_print += " ("; console_print += strerror (crterr); console_print += ").\n";
+
+    sprintf (slg, "%d", doserr);
+    console_print += "_doserrno: "; console_print += slg; console_print += " ("; console_print += strerror (doserr); console_print += ").\n";
+
+    sprintf (slg, "%d", threadId);
+    console_print += "ThreadId: "; console_print += slg; console_print += ".\n\n";
+
+    cout << "\n--------------------------------------------------\n";
+    cout << console_print;
+    cout << "\n--------------------------------------------------\n";
+
+    MMessageBox ("Ошибка в программе", "Ашипка!");
+
+    exit (EXIT_FAILURE);
     }
 
             //}
