@@ -1,10 +1,16 @@
 /* README
-It is objecting graphics libruary witch can help you in drawing
+It is objecting graphics libruary witch can help you in drawing.
 * $name      Mgraphicslib
 * $autor     Alex Kistev
 * $date      2017
-* $version   1.0
-* $copyright (C) Mgraphicslib (1.0), Alex Kistev, 2017
+* $version   1.4
+* $copyright (C) Mgraphicslib (1.4), Alex Kistev, 2017
+You can use option of professional mode for it you shold put
+    {
+    #define __MGL_PROFESSSIONAL_MODE__
+    }
+in your code before including Mgl.
+! $Note: use just if you understed that whith out it program works rightly.
 */
 
 
@@ -34,16 +40,22 @@ It is objecting graphics libruary witch can help you in drawing
 #ifndef __MGL_PROFESSSIONAL_MODE__ //{
 
     #define __MGL_WIN_CREATED__  WinCreated
-    #define __MGL_WIN_NOT_CREATED__  !__MGL_WIN_CREATED__
-    #define __MGL_WIN_CREATED_ASSERTED__  if( __MGL_WIN_NOT_CREATED__ )M_ERROR( "Window is not created" );
-    #define __MGL_WIN_NOT_CREATED_ASSERTED__  if( __MGL_WIN_CREATED__ )M_ERROR( "Window is already created" );
+    #define __MGL_WIN_NOT_CREATED__  (!__MGL_WIN_CREATED__)
+    #define __MGL_WIN_CREATED_ASSERTED__  if( __MGL_WIN_NOT_CREATED__ )M_ERROR( "Window is not created." );
+    #define __MGL_WIN_NOT_CREATED_ASSERTED__  if( __MGL_WIN_CREATED__ )M_ERROR( "Window is already created." );
 
     #define asserted  || M_ERROR( "Zero or false result." )
 
     #define __MGL_CFG_CREATED__  created
-    #define __MGL_CFG_NOT_CREATED__  !__MGL_CFG_CREATED__
+    #define __MGL_CFG_NOT_CREATED__  (!__MGL_CFG_CREATED__)
     #define __MGL_CFG_CREATED_ASSERTED__  if( __MGL_CFG_NOT_CREATED__ )M_ERROR( "Configuration isn't created" );
-    #define __MGL_CFG_NOT_CREATED_ASSERTED__  if(__MGL_CFG_CREATED__ )M_ERROR( "Configuration is created" );
+    #define __MGL_CFG_NOT_CREATED_ASSERTED__  if( __MGL_CFG_CREATED__ )M_ERROR( "Configuration is already created" );
+
+    #define __MGL_CFG_Z_INITED__  z_coordinate_inited
+    #define __MGL_CFG_Z_NOT_INITED__  (!__MGL_CFG_Z_INITED__)
+    #define __MGL_CFG_Z_INITED_ASSERTED__  if( __MGL_CFG_Z_NOT_INITED__ )M_ERROR( "Z-way is not inited, look how to use it" );
+    #define __MGL_CFG_Z_NOT_INITED_ASSERTED__  if( __MGL_CFG_Z_INITED__ )M_ERROR( "Z-way is already inited. Don't init it again" );
+    #warning to do: How to use Z-way inition
 
 #else
 
@@ -58,6 +70,11 @@ It is objecting graphics libruary witch can help you in drawing
     #define __MGL_CFG_NOT_CREATED__  !__MGL_CFG_CREATED__
     #define __MGL_CFG_CREATED_ASSERTED__
     #define __MGL_CFG_NOT_CREATED_ASSERTED__
+
+    #define __MGL_CFG_Z_INITED__  z_coordinate_inited
+    #define __MGL_CFG_Z_NOT_INITED__  (!__MGL_CFG_Z_INITED__)
+    #define __MGL_CFG_Z_INITED_ASSERTED__
+    #define __MGL_CFG_Z_NOT_INITED_ASSERTED__
 
 #endif                             //}
 
@@ -76,8 +93,6 @@ It is objecting graphics libruary witch can help you in drawing
     #undef  __STRICT_ANSI__
     #define __STRICT_ANSI__UNDEFINED
 
-    //#error plokj
-
 #endif                         //}
 
 #if !defined (WINVER) //{
@@ -86,7 +101,7 @@ It is objecting graphics libruary witch can help you in drawing
 #endif                //}
 
 #ifndef __M_GRAPHICS_LIB_VERSION__ //{
-    #define __M_GRAPHICS_LIB_VERSION__ 1.3
+    #define __M_GRAPHICS_LIB_VERSION__ 1.4
 #endif                             //}
 
 #if !defined (__cplusplus) //{
@@ -216,9 +231,9 @@ unsigned _M_Error (const char file[], int line, const char func[], const char ms
     sprintf (slg, "%d", threadId);
     console_print += "ThreadId: "; console_print += slg; console_print += ".\n\n";
 
-    cout << "\n--------------------------------------------------\n";
-    cout << console_print;
-    cout << "\n--------------------------------------------------\n";
+    cerr << "\n--------------------------------------------------\n";
+    cerr << console_print;
+    cerr << "\n--------------------------------------------------\n";
 
     MessageBox (win_hwnd, "Ошибка в программе", "Ашипка!", MB_OK);
 
@@ -261,7 +276,7 @@ class M_HDC
 
     public:
 
-    M_HDC (int _name, size_t _sizeX, size_t _sizeY, size_t _posX, size_t _posY)
+    M_HDC (int _name, size_t _sizeX, size_t _sizeY, int _posX, int _posY)
         {
         Set (_name, _sizeX, _sizeY, _posX, _posY);
         }
@@ -276,7 +291,7 @@ class M_HDC
     inline size_t getPosY  ();
     inline HDC   _getDC    ();
 
-    inline void Set (int _name, size_t _sizeX, size_t _sizeY, size_t _posX, size_t _posY);
+    inline void Set (int _name, size_t _sizeX, size_t _sizeY, int _posX, int _posY);
 
     inline void setPen   (HPEN     pen_);
     inline void setBrush (HBRUSH brush_);
@@ -289,19 +304,24 @@ class M_CONFIGURATION
     private:
 
     bool created;
+    bool z_coordinate_inited;
+    double zkx, zky;
     size_t number_hdcs;
     size_t selected;
     M_HDC* DCs;
 
-    inline int  _GET_ (int code);
+    inline int  _GET_ (UINT code);
 
     public:
 
     M_CONFIGURATION () :
-        created (false),
-        number_hdcs (0),
-        selected    (0),
-        DCs      (NULL)
+        z_coordinate_inited (false),
+        created  (false),
+        number_hdcs  (0),
+        selected  (0),
+        DCs  (NULL),
+        zkx  (0.15),
+        zky  (-0.1)
         {}
 
     ~M_CONFIGURATION ()
@@ -311,31 +331,35 @@ class M_CONFIGURATION
         }
 
     inline void M_CREATE ();
-    inline void M_ADD    (int _name, size_t _sizeX, size_t _sizeY, size_t _posX, size_t _posY);
+    inline void M_ADD    (int _name, size_t _sizeX, size_t _sizeY, int _posX, int _posY);
     inline void M_DELETE ();
+    inline void M_INITZ  (double kx, double ky);
+    inline void M_INITZ  ();
 
-    inline void M_SELECT (                          int code);
-    inline void M_SELECT (HBRUSH brush_                     );
-    inline void M_SELECT (               HPEN pen_          );
-    inline void M_SELECT (HBRUSH brush_, HPEN pen_          );
-    inline void M_SELECT (HBRUSH brush_, HPEN pen_, int code);
-    inline void M_SELECT (HBRUSH brush_,            int code);
-    inline void M_SELECT (               HPEN pen_, int code);
+    inline void M_SELECT (                          UINT code);
+    inline void M_SELECT (HBRUSH brush_                      );
+    inline void M_SELECT (               HPEN pen_           );
+    inline void M_SELECT (HBRUSH brush_, HPEN pen_           );
+    inline void M_SELECT (HBRUSH brush_, HPEN pen_, UINT code);
+    inline void M_SELECT (HBRUSH brush_,            UINT code);
+    inline void M_SELECT (               HPEN pen_, UINT code);
 
     inline void M_SETTEXTCOLOR (COLORREF color);
     inline void M_SETBKMODE    (COLORREF color);
 
-    inline void M_TRANSLATE (        );
-    inline void M_TRANSLATE (int code);
+    inline void M_TRANSLATE (         );
+    inline void M_TRANSLATE (UINT code);
 
-    inline bool M_LINE      (int x0, int y0, int x1, int y1, int code = __MGL_CFG_SELECTED_CODE__);
-    inline bool M_RECTANGLE (int x0, int y0, int x1, int y1, int code = __MGL_CFG_SELECTED_CODE__);
-    inline bool M_ELLIPSE   (int x0, int y0, int x1, int y1, int code = __MGL_CFG_SELECTED_CODE__);
-    inline bool M_CIRCLE    (int x0, int y0, int r, int code = __MGL_CFG_SELECTED_CODE__);
-    inline bool M_DRAWTEXT  (int x0, int y0, char* text,           UINT tp = DT_NOCLIP);
-    inline bool M_DRAWTEXT  (int x0, int y0, char* text, int code, UINT tp = DT_NOCLIP);
-    inline bool M_BITBLT    (int x0, int y0, int sizex, int sizey, HDC dc, int dc_x0, int dc_y0          );
-    inline bool M_BITBLT    (int x0, int y0, int sizex, int sizey, HDC dc, int dc_x0, int dc_y0, int code);
+    inline bool M_LINE      (double x0, double y0, double x1, double y1, UINT code = __MGL_CFG_SELECTED_CODE__);
+    inline bool M_RECTANGLE (double x0, double y0, double x1, double y1, UINT code = __MGL_CFG_SELECTED_CODE__);
+    inline bool M_ELLIPSE   (double x0, double y0, double x1, double y1, UINT code = __MGL_CFG_SELECTED_CODE__);
+    inline bool M_CIRCLE    (double x0, double y0, double r, UINT code = __MGL_CFG_SELECTED_CODE__);
+    inline bool M_CIRCLE    (double x0, double y0, double z, double r, bool, UINT code = __MGL_CFG_SELECTED_CODE__);
+    inline bool M_DRAWTEXT  (double x0, double y0, char* text,            UINT tp);
+    inline bool M_DRAWTEXT  (double x0, double y0, char* text, UINT code, UINT tp);
+    inline bool M_SPHERE    (double x0, double y0, double r, double delta);
+    inline bool M_BITBLT    (int x0, int y0, size_t sizex, size_t sizey, HDC dc, int dc_x0, int dc_y0          );
+    inline bool M_BITBLT    (int x0, int y0, size_t sizex, size_t sizey, HDC dc, int dc_x0, int dc_y0, UINT code);
 
     inline HDC  M_GETDC ();
     };
@@ -376,7 +400,7 @@ inline HDC   M_HDC::_getDC    ()
     return hdc;
     }
 
-inline void  M_HDC::Set       (int _name, size_t _sizeX, size_t _sizeY, size_t _posX, size_t _posY)
+inline void  M_HDC::Set       (int _name, size_t _sizeX, size_t _sizeY, int _posX, int _posY)
     {
     sizeX_ = _sizeX;
     sizeY_ = _sizeY;
@@ -414,7 +438,7 @@ inline bool  M_HDC::_translate_platform_ ()
 
                     //{ IN LIBARY FUNCTIONS PRIVATE
 
-inline int  M_CONFIGURATION::_GET_ (int code)
+inline int  M_CONFIGURATION::_GET_ (UINT code)
     {
     if (code == __MGL_CFG_SELECTED_CODE__) return selected;
     int i = 0;
@@ -443,13 +467,14 @@ inline void M_CONFIGURATION::M_CREATE ()
     DCs = (M_HDC*) calloc (number_hdcs, sizeof(M_HDC));
     }
 
-inline void M_CONFIGURATION::M_ADD (int _name, size_t _sizeX, size_t _sizeY, size_t _posX, size_t _posY)
+inline void M_CONFIGURATION::M_ADD (int _name, size_t _sizeX, size_t _sizeY, int _posX, int _posY)
     {
     __MGL_CFG_CREATED_ASSERTED__
 
     int num = 0;
     for (int i = 0; i < number_hdcs; i++) if (_name == DCs[i].getName()) num++;
     if (num != 0) M_ERROR ("can't add to configuration becase name had already been declared");
+    #warning to do: Do adding rightly
     else
         {
         if (_name == __MGL_CFG_SELECTED_CODE__) M_ERROR ("code is brownd by system (__MGL_CFG_SELECTED_CODE__)");
@@ -480,26 +505,44 @@ inline void M_CONFIGURATION::M_DELETE ()
     free(DCs);
     }
 
-inline void M_CONFIGURATION::M_SELECT (                          int code)
+inline void M_CONFIGURATION::M_INITZ  (double kx, double ky)
+    {
+    __MGL_CFG_CREATED_ASSERTED__
+    __MGL_CFG_Z_NOT_INITED_ASSERTED__
+
+    zkx = kx;
+    zky = ky;
+    z_coordinate_inited = true;
+    }
+
+inline void M_CONFIGURATION::M_INITZ  ()
+    {
+    __MGL_CFG_CREATED_ASSERTED__
+    __MGL_CFG_Z_NOT_INITED_ASSERTED__
+
+    z_coordinate_inited = true;
+    }
+
+inline void M_CONFIGURATION::M_SELECT (                          UINT code)
     {
     selected = _GET_ (code);
     }
 
-inline void M_CONFIGURATION::M_SELECT (HBRUSH brush_                     )
+inline void M_CONFIGURATION::M_SELECT (HBRUSH brush_                      )
     {
     __MGL_CFG_CREATED_ASSERTED__
 
     DCs[selected   ].setBrush (brush_);
     }
 
-inline void M_CONFIGURATION::M_SELECT (               HPEN pen_          )
+inline void M_CONFIGURATION::M_SELECT (               HPEN pen_           )
     {
     __MGL_CFG_CREATED_ASSERTED__
 
     DCs[selected   ].setPen   (  pen_);
     }
 
-inline void M_CONFIGURATION::M_SELECT (HBRUSH brush_, HPEN pen_          )
+inline void M_CONFIGURATION::M_SELECT (HBRUSH brush_, HPEN pen_           )
     {
     __MGL_CFG_CREATED_ASSERTED__
 
@@ -507,7 +550,7 @@ inline void M_CONFIGURATION::M_SELECT (HBRUSH brush_, HPEN pen_          )
     DCs[selected   ].setPen   (  pen_);
     }
 
-inline void M_CONFIGURATION::M_SELECT (HBRUSH brush_, HPEN pen_, int code)
+inline void M_CONFIGURATION::M_SELECT (HBRUSH brush_, HPEN pen_, UINT code)
     {
     __MGL_CFG_CREATED_ASSERTED__
 
@@ -515,14 +558,14 @@ inline void M_CONFIGURATION::M_SELECT (HBRUSH brush_, HPEN pen_, int code)
     DCs[_GET_(code)].setPen   (  pen_);
     }
 
-inline void M_CONFIGURATION::M_SELECT (HBRUSH brush_,            int code)
+inline void M_CONFIGURATION::M_SELECT (HBRUSH brush_,            UINT code)
     {
     __MGL_CFG_CREATED_ASSERTED__
 
     DCs[_GET_(code)].setBrush (brush_);
     }
 
-inline void M_CONFIGURATION::M_SELECT (               HPEN pen_, int code)
+inline void M_CONFIGURATION::M_SELECT (               HPEN pen_, UINT code)
     {
     __MGL_CFG_CREATED_ASSERTED__
 
@@ -546,14 +589,14 @@ inline void M_CONFIGURATION::M_TRANSLATE (        )
     DCs[selected   ]._translate_platform_();
     }
 
-inline void M_CONFIGURATION::M_TRANSLATE (int code)
+inline void M_CONFIGURATION::M_TRANSLATE (UINT code)
     {
     __MGL_CFG_CREATED_ASSERTED__
 
     DCs[_GET_(code)]._translate_platform_();
     }
 
-inline bool M_CONFIGURATION::M_LINE (int x0, int y0, int x1, int y1, int code /* = __MGL_CFG_SELECTED_CODE__ */ )
+inline bool M_CONFIGURATION::M_LINE (double x0, double y0, double x1, double y1, UINT code /* = __MGL_CFG_SELECTED_CODE__ */ )
     {
     __MGL_CFG_CREATED_ASSERTED__
 
@@ -565,26 +608,33 @@ inline bool M_CONFIGURATION::M_LINE (int x0, int y0, int x1, int y1, int code /*
     return true;
     }
 
-inline bool M_CONFIGURATION::M_RECTANGLE (int x0, int y0, int x1, int y1, int code /* = __MGL_CFG_SELECTED_CODE__ */ )
+inline bool M_CONFIGURATION::M_RECTANGLE (double x0, double y0, double x1, double y1, UINT code /* = __MGL_CFG_SELECTED_CODE__ */ )
     {
     __MGL_CFG_CREATED_ASSERTED__
 
-    return Rectangle (DCs[_GET_(code)]._getDC(), x0, y0, x1, y1);
+    return Rectangle (DCs[_GET_(code)]._getDC(), x0, y0, x1, y1) asserted;
     }
 
-inline bool M_CONFIGURATION::M_ELLIPSE (int x0, int y0, int x1, int y1, int code /* = __MGL_CFG_SELECTED_CODE__ */ )
+inline bool M_CONFIGURATION::M_ELLIPSE (double x0, double y0, double x1, double y1, UINT code /* = __MGL_CFG_SELECTED_CODE__ */ )
     {
     __MGL_CFG_CREATED_ASSERTED__
 
-    return Ellipse (DCs[_GET_(code)]._getDC(), x0, y0, x1, y1);
+    return Ellipse (DCs[_GET_(code)]._getDC(), x0, y0, x1, y1) asserted;
     }
 
-inline bool M_CONFIGURATION::M_CIRCLE (int x0, int y0, int r, int code /* = __MGL_CFG_SELECTED_CODE__ */ )
+inline bool M_CONFIGURATION::M_CIRCLE (double x0, double y0, double r, UINT code /* = __MGL_CFG_SELECTED_CODE__ */ )
     {
     return M_ELLIPSE (x0 - r, y0 - r, x0 + r, y0 + r, code);
     }
 
-inline bool M_CONFIGURATION::M_DRAWTEXT  (int x0, int y0, char* text,           UINT tp /* = DT_NOCLIP */ )
+inline bool M_CONFIGURATION::M_CIRCLE    (double x0, double y0, double z, double r, bool, UINT code /* = __MGL_CFG_SELECTED_CODE__ */ )
+    {
+    __MGL_CFG_Z_INITED_ASSERTED__
+
+    return M_CIRCLE (x0 + zkx*z, y0 + z*zky, r, code);
+    }
+
+inline bool M_CONFIGURATION::M_DRAWTEXT  (double x0, double y0, char* text,            UINT tp)
     {
     __MGL_CFG_CREATED_ASSERTED__
 
@@ -594,7 +644,7 @@ inline bool M_CONFIGURATION::M_DRAWTEXT  (int x0, int y0, char* text,           
     return DrawText (DCs[selected   ]._getDC(), text, -1, &rt, tp);
     }
 
-inline bool M_CONFIGURATION::M_DRAWTEXT  (int x0, int y0, char* text, int code, UINT tp /* = DT_NOCLIP */ )
+inline bool M_CONFIGURATION::M_DRAWTEXT  (double x0, double y0, char* text, UINT code, UINT tp)
     {
     __MGL_CFG_CREATED_ASSERTED__
 
@@ -604,7 +654,76 @@ inline bool M_CONFIGURATION::M_DRAWTEXT  (int x0, int y0, char* text, int code, 
     return DrawText (DCs[_GET_(code)]._getDC(), text, -1, &rt, tp) asserted;
     }
 
-inline bool M_CONFIGURATION::M_BITBLT    (int x0, int y0, int sizex, int sizey, HDC dc, int dc_x0, int dc_y0          )
+inline bool M_CONFIGURATION::M_SPHERE    (double x0, double y0, double r, double delta)
+    {
+    __MGL_CFG_CREATED_ASSERTED__
+    __MGL_CFG_Z_INITED_ASSERTED__
+
+    //M_CIRCLE(x0, y0, r);
+
+    for (double x = -r; x < r; x+= delta)
+        {
+        double zold = -r - 2;
+        for (double y = -r; y < r; y+= delta)
+            {
+            double z;
+            if (r*r - y*y - x*x >= 0)
+                {
+                z = sqrt (r*r - x*x - y*y);
+                if (zold > -r - 1) M_LINE (x0 + x + zold*zkx, y0 + y - delta + zold*zky, x0 + x + z*zkx, y0 + y + z*zky);
+                zold = z;
+                }
+            }
+        }
+
+
+    for (double x = -r; x < r; x+= delta)
+        {
+        double zold = -r - 2;
+        for (double y = -r; y < r; y+= delta)
+            {
+            double z;
+            if (r*r - y*y - x*x >= 0)
+                {
+                z = sqrt (r*r - x*x - y*y);
+                if (zold > -r - 1) M_LINE (x0 + x - zold*zkx, y0 + y - delta - zold*zky, x0 + x - z*zkx, y0 + y - z*zky);
+                zold = z;
+                }
+            }
+        }
+
+    for (double y = -r; y < r; y+= delta)
+        {
+        double zold = -r - 2;
+        for (double x = -r; x < r; x+= delta)
+            {
+            double z;
+            if (r*r - y*y - x*x >= 0)
+                {
+                z = sqrt (r*r - x*x - y*y);
+                if (zold > -r - 1) M_LINE (x0 + x - delta + zold*zkx, y0 + y + zold*zky, x0 + x + z*zkx, y0 + y + z*zky);
+                zold = z;
+                }
+            }
+        }
+
+    for (double x = -r; x < r; x+= delta)
+        {
+        double zold = -r - 2;
+        for (double y = -r; y < r; y+= delta)
+            {
+            double z;
+            if (r*r - y*y - x*x >= 0)
+                {
+                z = sqrt (r*r - x*x - y*y);
+                if (zold > -r - 1) M_LINE (x0 + x - delta - zold*zkx, y0 + y - zold*zky, x0 + x - z*zkx, y0 + y - z*zky);
+                zold = z;
+                }
+            }
+        }
+    }
+
+inline bool M_CONFIGURATION::M_BITBLT    (int x0, int y0, size_t sizex, size_t sizey, HDC dc, int dc_x0, int dc_y0          )
     {
     __MGL_CFG_CREATED_ASSERTED__
     __MGL_WIN_CREATED_ASSERTED__
@@ -612,7 +731,7 @@ inline bool M_CONFIGURATION::M_BITBLT    (int x0, int y0, int sizex, int sizey, 
     return BitBlt (DCs[selected   ]._getDC(), x0, y0, sizex, sizey, dc, dc_x0, dc_y0, SRCCOPY) asserted;
     }
 
-inline bool M_CONFIGURATION::M_BITBLT    (int x0, int y0, int sizex, int sizey, HDC dc, int dc_x0, int dc_y0, int code)
+inline bool M_CONFIGURATION::M_BITBLT    (int x0, int y0, size_t sizex, size_t sizey, HDC dc, int dc_x0, int dc_y0, UINT code)
     {
     __MGL_CFG_CREATED_ASSERTED__
     __MGL_WIN_CREATED_ASSERTED__
@@ -643,7 +762,7 @@ LRESULT CALLBACK WindowProcedure (HWND, UINT, WPARAM, LPARAM);
 
 void _thread_massage (void* winstr_param);
 
-HICON _ICON_ ();
+HICON MglIcon ();
 
 void MCreateWindow (_m_win_struct_ winstr);
 
@@ -805,7 +924,7 @@ HICON MLoadIcon (char* filename)
     return (HICON) LoadImage (NULL, filename, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
     }
 
-HICON _ICON_ ()
+HICON MglIcon ()
     {
     const char image16 [16*16+1] =
         "0000001111000000"
@@ -894,6 +1013,8 @@ HDC MCreateComatibleDC (size_t sizeX_, size_t sizeY_)
 inline bool MNotifyIcon (HICON icon, char* Tip, char* InfoTitle, char* Info, DWORD flags /* == NIIF_INFO */ )
     {
     NOTIFYICONDATA nid = { sizeof (nid) };
+
+    if (!icon) icon = MglIcon();
 
     nid.uFlags = NIF_ICON | NIF_TIP | NIF_INFO;
     nid.hWnd   = NULL;
