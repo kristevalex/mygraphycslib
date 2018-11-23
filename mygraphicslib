@@ -29,9 +29,7 @@ in your code before including Mgl.
 
 #define ROUND( x )  ( (int) floor ((x) + 0.5) )
 
-#define MGL_CHECK_VERSION( msg )  if( __M_GRAPHICS_LIB_VERSION__ < msg )M_ERROR( "neads higher version of Mgl" )
-
-#define M_PREPROC( sym ) #sym
+#define MGL_CHECK_VERSION( msg )  if( __MGL_VERSION__ < msg )M_ERROR( "neads higher version of Mgl" )
 
         //{ ERRORS
 
@@ -96,13 +94,28 @@ in your code before including Mgl.
 #endif                         //}
 
 #if !defined (WINVER) //{
-    #define   WINVER                   0x0500   // Defaults to Windows 2000
+
+    #define   WINVER  0x0500   // Defaults to Windows 2000
     #define   WINDOWS_ENABLE_CPLUSPLUS
+
 #endif                //}
 
-#ifndef __M_GRAPHICS_LIB_VERSION__ //{
-    #define __M_GRAPHICS_LIB_VERSION__ 1.4
-#endif                             //}
+#ifdef __MGL_VERSION__ //{
+
+    #undef  __MGL_VERSION__
+
+#endif                 //}
+
+#ifdef __M_GRAPHICS_LIB_VERSION__ //{
+
+    #undef  __M_GRAPHICS_LIB_VERSION__
+
+#endif                 //}
+
+#define __MGL_VERSION__  1.5
+
+#define __M_GRAPHICS_LIB_VERSION__  __MGL_VERSION__    // To compatiblity for erlier version
+
 
 #if !defined (__cplusplus) //{
 
@@ -252,17 +265,19 @@ struct _m_win_struct_
     {
     HWND hwnd;
     size_t sizeX, sizeY;
-    char* NAME;
+    char* Name;
     int nFunsterStil;
     HINSTANCE hThisInstance;
+    HICON Icon;
 
-    _m_win_struct_   (          ) :
+    _m_win_struct_    (          ) :
         hwnd          (NULL      ),
         sizeX         (800       ),
         sizeY         (600       ),
-        NAME          ("Untitled"),
+        Name          ("Untitled"),
         nFunsterStil  (10        ),
-        hThisInstance (NULL      )
+        hThisInstance (NULL      ),
+        Icon          (NULL      )
         {}
     };
 
@@ -360,6 +375,8 @@ class M_CONFIGURATION
     inline bool M_SPHERE    (double x0, double y0, double r, double delta);
     inline bool M_BITBLT    (int x0, int y0, size_t sizex, size_t sizey, HDC dc, int dc_x0, int dc_y0          );
     inline bool M_BITBLT    (int x0, int y0, size_t sizex, size_t sizey, HDC dc, int dc_x0, int dc_y0, UINT code);
+
+    #warning to do: Add clear function
 
     inline HDC  M_GETDC ();
     };
@@ -859,18 +876,18 @@ void _thread_massage (void* winstr_param)
     wincl.lpszClassName = szClassName;
     wincl.lpfnWndProc = WindowProcedure;      /* This function is called by windows */
     wincl.style = CS_DBLCLKS;                 /* Catch double-clicks */
-    wincl.hIcon = LoadIcon (NULL, IDI_APPLICATION);
+    wincl.hIcon = winstr->Icon;
     wincl.hIconSm = LoadIcon (NULL, IDI_APPLICATION);
     wincl.hCursor = LoadCursor (NULL, IDC_ARROW);
     wincl.hbrBackground = (HBRUSH) GetStockObject(HOLLOW_BRUSH);
 
     if (!RegisterClassEx (&wincl))
-        printf("RegisterClassEx failed");
+        M_ERROR("RegisterClassEx failed");
 
     winstr->hwnd = CreateWindowEx (
            0,                        /* Extended possibilites for variation */
            szClassName,              /* Classname */
-           winstr->NAME,             /* Title Text */
+           winstr->Name,             /* Title Text */
            WS_OVERLAPPEDWINDOW,      /* default window */
            CW_USEDEFAULT,            /* Windows decides the position */
            CW_USEDEFAULT,            /* where the window ends up on the screen */
@@ -999,13 +1016,15 @@ inline int MDeltaMouseWheel ()
 
 HDC MCreateComatibleDC (size_t sizeX_, size_t sizeY_)
     {
+    __MGL_WIN_CREATED_ASSERTED__
+
     HDC hdc = CreateCompatibleDC (win_hdc);
     if (!hdc)  M_ERROR ("Cannot create buffer: CreateCompatibleDC() failed");
 
     HBITMAP bmap = CreateCompatibleBitmap (win_hdc, sizeX_, sizeY_);
     if (!bmap) M_ERROR ("Cannot create buffer: CreateCompatibleBitmap() failed");
 
-    SelectObject (hdc, bmap);
+    SelectObject (hdc, bmap) asserted;
 
     return hdc;
     }
@@ -1025,8 +1044,8 @@ inline bool MNotifyIcon (HICON icon, char* Tip, char* InfoTitle, char* Info, DWO
     strncpy    (nid.szInfo, Info, sizeof(nid.szInfo));
     nid.dwInfoFlags = flags;
 
-    Shell_NotifyIcon (NIM_ADD,    &nid);
-    Shell_NotifyIcon (NIM_MODIFY, &nid);
+    Shell_NotifyIcon (NIM_ADD,    &nid) asserted;
+    Shell_NotifyIcon (NIM_MODIFY, &nid) asserted;
 
     if (nid.hIcon) DestroyIcon (nid.hIcon);
 
