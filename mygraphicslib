@@ -14,11 +14,19 @@ in your code before including Mgl.
 */
 
 
-#ifndef __M_GRAPHICS_LIB_INCLUDED__ //{
+#ifndef __MGL_INCLUDED__ //{
 
     //{ DEFINES
 
-#define __M_GRAPHICS_LIB_INCLUDED__
+#ifdef __M_GRAPHICS_LIB_INCUDED__
+
+    #error You can not include diffrent versions of Mgl
+
+#endif
+
+#define __MGL_INCLUDED__
+
+#define __M_GRAPHICS_LIB_INCLUDED__   // for comatiblity to erlyer vversion
 
 #define __MGL_CFG_SELECTED_CODE__ -1
 
@@ -123,6 +131,12 @@ in your code before including Mgl.
 
 #endif                     //}
 
+#ifdef __GNUC__
+
+    #pragma GCC diagnostic ignored "-Wwrite-strings"
+
+#endif
+
 #if  defined (_MSC_VER) && (_MSC_VER >= 1400)   // { MSVC 8 (2005) or greater
 
     #pragma warning (disable: 26135)            // missing locking annotation
@@ -169,6 +183,7 @@ in your code before including Mgl.
 #include <locale.h>
 #include <time.h>
 #include <float.h>
+#include <math.h>
 
 #include <map>
 #include <vector>
